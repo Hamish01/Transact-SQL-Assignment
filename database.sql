@@ -60,7 +60,7 @@ CREATE SEQUENCE SALE_SEQ;
 
 GO
 
-
+--task 1
 IF OBJECT_ID('ADD_CUSTOMER') IS NOT NULL
 DROP PROCEDURE ADD_CUSTOMER;
 GO
@@ -92,7 +92,7 @@ BEGIN
 END;
 
 GO
-
+--task 2
 
 IF OBJECT_ID('DELETE_ALL_CUSTOMERS') IS NOT NULL
 DROP PROCEDURE DELETE_ALL_CUSTOMERS;
@@ -113,8 +113,8 @@ BEGIN
 END;
 
 GO
-GO
 
+--task 3
 
 IF OBJECT_ID('ADD_PRODUCT') IS NOT NULL
 DROP PROCEDURE ADD_PRODUCT;
@@ -149,7 +149,7 @@ END;
 
 GO
 
-
+--task 4
 IF OBJECT_ID('DELETE_ALL_PRODUCT') IS NOT NULL
 DROP PROCEDURE DELETE_ALL_PRODUCT;
 GO
@@ -170,20 +170,198 @@ END;
 
 
 GO
-/*
+--task 5
+IF OBJECT_ID('GET_CUSTOMER_STRING') IS NOT NULL
+DROP PROCEDURE GET_CUSTOMER_STRING;
+GO
+
+CREATE PROCEDURE GET_CUSTOMER_STRING @pCustId INT, @pReturnString NVARCHAR(100) OUTPUT AS
+BEGIN
+    BEGIN TRY
+        DECLARE @CustName NVARCHAR(100), @Status NVARCHAR(7), @YTD MONEY;
+        
+        SELECT @CustName = CUSTNAME, @Status = [STATUS], @YTD = SALES_YTD
+        FROM CUSTOMER
+        WHERE CUSTID = @pCustId
+
+        IF @@ROWCOUNT = 0
+            THROW 50060, 'Customer ID not found', 1
+        SET @pReturnString = CONCAT('Custid: ', @pCustId, ' Name: ' , @CustName, ' Status: ', @Status, ' SalesYTD: ', @YTD);
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50060)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+GO
+--task 6
+IF OBJECT_ID('UPD_CUST_SALESYTD') IS NOT NULL
+DROP PROCEDURE UPD_CUST_SALESYTD;
+GO
+CREATE PROCEDURE UPD_CUST_SALESYTD @pCustId INT, @pamt MONEY OUTPUT AS
+BEGIN
+    BEGIN TRY
+        IF @pamt < -999.99 or @pamt > 999.99
+            THROW 50080, 'Amount out of range', 1
+        UPDATE CUSTOMER SET SALES_YTD = SALES_YTD + @pamt WHERE CUSTID = @pCustId
+        IF @@ROWCOUNT = 0
+          THROW 50070, 'Customer ID not found', 1
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50070, 50080)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+
+GO
+--task 7
+IF OBJECT_ID('GET_PROD_STRING') IS NOT NULL
+DROP PROCEDURE GET_PROD_STRING;
+GO
+
+CREATE PROCEDURE GET_PROD_STRING @pProdId INT, @pReturnString NVARCHAR(100) OUTPUT AS
+BEGIN
+    BEGIN TRY
+        DECLARE @ProdName NVARCHAR(100),@SellingPrice MONEY, @YTD MONEY;
+        
+        SELECT @ProdName = PRODNAME, @SellingPrice = SELLING_PRICE, @YTD = SALES_YTD
+        FROM PRODUCT
+        WHERE PRODID = @pProdId
+
+        IF @@ROWCOUNT = 0
+            THROW 50090, 'Product ID not found', 1
+        SET @pReturnString = CONCAT('Prodid: ', @pProdId, ' Name: ' , @ProdName, ' Price: ', @SellingPrice, ' SalesYTD: ', @YTD);
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50090)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+GO
+--task 8
+IF OBJECT_ID('UPD_PROD_SALESYTD') IS NOT NULL
+DROP PROCEDURE UPD_PROD_SALESYTD;
+GO
+CREATE PROCEDURE UPD_PROD_SALESYTD @pProdId INT, @pamt MONEY OUTPUT AS
+BEGIN
+    BEGIN TRY
+        IF @pamt < -999.99 or @pamt > 999.99
+            THROW 50110, 'Amount out of range', 1
+        UPDATE PRODUCT SET SALES_YTD = SALES_YTD + @pamt WHERE PRODID = @pProdId
+        IF @@ROWCOUNT = 0
+          THROW 50100, 'Product ID not found', 1
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50100, 50110)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+
+GO
+--task 9
+IF OBJECT_ID('UPD_CUSTOMER_STATUS') IS NOT NULL
+DROP PROCEDURE UPD_CUSTOMER_STATUS;
+GO
+CREATE PROCEDURE UPD_CUSTOMER_STATUS @pCustId INT, @pStatus NVARCHAR(7) OUTPUT AS
+BEGIN
+    BEGIN TRY
+        IF @pStatus NOT IN ('OK','SUSPEND')
+            THROW 50130, 'Invalid Status value', 1
+        UPDATE CUSTOMER SET [STATUS] = @pStatus WHERE CUSTID = @pCustId
+        IF @@ROWCOUNT = 0
+          THROW 50120, 'Customer ID not found', 1
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50120, 50130)
+            THROW
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+GO
+--task 10
+IF OBJECT_ID('ADD_SIMPLE_SALE') IS NOT NULL
+DROP PROCEDURE ADD_SIMPLE_SALE;
+GO
+CREATE PROCEDURE ADD_SIMPLE_SALE @pCustId INT, @pProdId INT, @pqty INT OUTPUT AS
+BEGIN
+    BEGIN TRY
+        IF ((SELECT [STATUS] FROM CUSTOMER WHERE CUSTID = @pCustId) NOT IN ('OK'))
+            THROW 50150, 'Customer status is not OK', 1
+        IF @pqty < 1 or @pqty > 999
+            THROW 50140, 'Sale Quantity outside valid range', 1
+        DECLARE @pamt MONEY = @pqty * (SELECT SELLING_PRICE FROM PRODUCT WHERE PRODID = @pProdId)
+        EXEC UPD_CUST_SALESYTD @pCustId = @pCustId, @pamt = @pamt;
+        EXEC UPD_PROD_SALESYTD @pProdId, @pamt;
+    END TRY
+    BEGIN CATCH
+        IF ERROR_NUMBER() IN (50140, 50150)
+            THROW
+        ELSE IF ERROR_NUMBER() = 50070
+            THROW 50160, 'Customer ID not found', 1
+        ELSE IF ERROR_NUMBER() = 50100
+            THROW 50170, 'Product ID not found', 1
+        ELSE
+            BEGIN
+                DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+                THROW 50000, @ERRORMESSAGE, 1
+            END
+    END CATCH
+END
+GO
+/*  ________THIS IS TEST CODE__________
 EXEC ADD_CUSTOMER @pcustid = 1, @pcustname = 'testdude2';
 
 EXEC ADD_CUSTOMER @pcustid = 500, @pcustname = 'testdude3';
 EXEC DELETE_ALL_CUSTOMERS;
-
+EXEC UPD_CUST_SALESYTD @pcustid = 1, @pamt = 5.00
 select * from customer;
-*/
+
+BEGIN
+    DECLARE @OUTPUTVALUE1 NVARCHAR(100);
+    EXEC GET_CUSTOMER_STRING @pCustId = 1 , @pReturnString = @OUTPUTVALUE1 OUTPUT;
+    PRINT(@OUTPUTVALUE1)
+END    
 EXEC ADD_PRODUCT @pprodid = 1001, @pprodname = 'Solid Chris', @pprice = 1.00;
-/*
+
 EXEC ADD_PRODUCT @pprodid = 1, @pprodname = 'Ian Brandon Anderson', @pprice = 1.00;
 
 EXEC ADD_PRODUCT @pprodid = 1002, @pprodname = 'Ricardo', @pprice = 1000.00;
-*/
+
+BEGIN
+    DECLARE @OUTPUTVALUE2 NVARCHAR(100);
+    EXEC GET_PROD_STRING @pProdId = 1001 , @pReturnString = @OUTPUTVALUE2 OUTPUT;
+    PRINT(@OUTPUTVALUE2)
+END
+EXEC UPD_PROD_SALESYTD @pprodid = 1001, @pamt = 5.00;
+
 EXEC DELETE_ALL_PRODUCT;
 
 SELECT * from PRODUCT;
+*/
+EXEC ADD_CUSTOMER @pcustid = 1, @pcustname = 'testdude2';
+EXEC ADD_PRODUCT @pprodid = 1001, @pprodname = 'Solid Chris', @pprice = 1.00;
+exec ADD_SIMPLE_SALE @pcustid = 1,@pprodid = 1001, @pqty = 1
