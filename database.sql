@@ -332,6 +332,25 @@ BEGIN
     END CATCH
 END
 GO
+--task 11
+/*
+IF OBJECT_ID('SUM_CUSTOMER_SALESYTD') IS NOT NULL
+DROP PROCEDURE SUM_CUSTOMER_SALESYTD;
+GO
+CREATE PROCEDURE SUM_CUSTOMER_SALESYTD AS
+BEGIN
+    BEGIN TRY
+        SELECT SUM(SALES_YTD) FROM CUSTOMER
+    END TRY
+    BEGIN CATCH
+        BEGIN
+            DECLARE @ERRORMESSAGE NVARCHAR(MAX) = ERROR_MESSAGE();
+            THROW 50000, @ERRORMESSAGE, 1
+        END
+    END CATCH
+
+END
+*/
 /*  ________THIS IS TEST CODE__________
 EXEC ADD_CUSTOMER @pcustid = 1, @pcustname = 'testdude2';
 
@@ -362,6 +381,8 @@ EXEC DELETE_ALL_PRODUCT;
 
 SELECT * from PRODUCT;
 */
+SELECT CUSTID, CUSTNAME, SALES_YTD, SUM(SALES_YTD) as YTD FROM CUSTOMER
 EXEC ADD_CUSTOMER @pcustid = 1, @pcustname = 'testdude2';
 EXEC ADD_PRODUCT @pprodid = 1001, @pprodname = 'Solid Chris', @pprice = 1.00;
-exec ADD_SIMPLE_SALE @pcustid = 1,@pprodid = 1001, @pqty = 1
+exec ADD_SIMPLE_SALE @pcustid = 1,@pprodid = 1001, @pqty = 1;
+exec SUM_CUSTOMER_SALESYTD
